@@ -2,11 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { listarEmpleados, eliminarEmpleado } from '../services/empleadoService.js';
 import EmpleadoDetalle from './EmpleadoDetalle.js';
 import EmpleadoForm from './EmpleadoForm.js';
+import ConfiguracionInicial from './ConfiguracionInicial.js';
+import RegistroMultipleEmpleados from './RegistroMultipleEmpleados.js';
 
 export default function EmpleadoLista() {
   const [empleados, setEmpleados] = useState([]);
   const [seleccionado, setSeleccionado] = useState(null);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [mostrarConfiguracion, setMostrarConfiguracion] = useState(false);
+  const [mostrarRegistroMultiple, setMostrarRegistroMultiple] = useState(false);
+  const [configuracion, setConfiguracion] = useState(null);
 
   async function cargar() {
     try {
@@ -21,12 +26,29 @@ export default function EmpleadoLista() {
   useEffect(() => { cargar(); }, []);
 
   function calcularSueldo(e) {
-    const horasTotales = e.horasPorDia ? e.horasPorDia.reduce((sum, h) => sum + h, 0) : 0;
+    // Asegurar que horasPorDia sea un array
+    let horasPorDia = e.horasPorDia;
+    
+    // Si es string, intentar parsearlo
+    if (typeof horasPorDia === 'string') {
+      try {
+        horasPorDia = JSON.parse(horasPorDia);
+      } catch {
+        horasPorDia = [0, 0, 0, 0, 0, 0, 0];
+      }
+    }
+    
+    // Si no es un array, usar array por defecto
+    if (!Array.isArray(horasPorDia)) {
+      horasPorDia = [0, 0, 0, 0, 0, 0, 0];
+    }
+    
+    const horasTotales = horasPorDia.reduce((sum, h) => sum + (Number(h) || 0), 0);
     return horasTotales * (e.pagoPorHora || 0);
   }
 
   async function onEliminar(id) {
-    if (!confirm('Eliminar empleado?')) return;
+    if (!window.confirm('Eliminar empleado?')) return;
     try {
       await eliminarEmpleado(id);
       await cargar();
@@ -38,15 +60,59 @@ export default function EmpleadoLista() {
 
   const totalNomina = empleados.reduce((acc, e) => acc + calcularSueldo(e), 0);
 
+  function handleIniciarConfiguracion(config) {
+    setConfiguracion(config);
+    setMostrarConfiguracion(false);
+    setMostrarRegistroMultiple(true);
+  }
+
+  function handleCompletarRegistro() {
+    setMostrarRegistroMultiple(false);
+    setConfiguracion(null);
+    cargar();
+  }
+
+  function handleCancelarTodo() {
+    setMostrarConfiguracion(false);
+    setMostrarRegistroMultiple(false);
+    setConfiguracion(null);
+  }
+
   return (
     <div style={{ padding: 20 }}>
       <h2>📋 Gestión de Empleados</h2>
       <button 
-        onClick={() => { setMostrarForm(true); setSeleccionado(null); }}
-        style={{ padding: '10px 20px', cursor: 'pointer', marginBottom: 15 }}
+        onClick={() => { setMostrarConfiguracion(true); }}
+        style={{ 
+          padding: '12px 25px', 
+          cursor: 'pointer', 
+          marginBottom: 15,
+          backgroundColor: '#3498db',
+          color: 'white',
+          border: 'none',
+          borderRadius: 5,
+          fontSize: '16px',
+          fontWeight: 'bold'
+        }}
       >
-        ➕ Nuevo Empleado
+        👥 Nuevos Empleados
       </button>
+      
+      {mostrarConfiguracion && (
+        <ConfiguracionInicial 
+          onIniciar={handleIniciarConfiguracion}
+          onCancelar={() => setMostrarConfiguracion(false)}
+        />
+      )}
+
+      {mostrarRegistroMultiple && configuracion && (
+        <RegistroMultipleEmpleados 
+          numEmpleados={configuracion.numEmpleados}
+          pagoPorHora={configuracion.pagoPorHora}
+          onCompleto={handleCompletarRegistro}
+          onCancelar={handleCancelarTodo}
+        />
+      )}
       
       {mostrarForm && (
         <EmpleadoForm 
@@ -69,7 +135,21 @@ export default function EmpleadoLista() {
         </thead>
         <tbody>
           {empleados.map(e => {
-            const horasTotales = e.horasPorDia ? e.horasPorDia.reduce((sum, h) => sum + h, 0) : 0;
+            // Asegurar que horasPorDia sea un array
+            let horasPorDia = e.horasPorDia;
+            if (typeof horasPorDia === 'string') {
+              try {
+                horasPorDia = JSON.parse(horasPorDia);
+              } catch {
+                horasPorDia = [0, 0, 0, 0, 0, 0, 0];
+              }
+            }
+            if (!Array.isArray(horasPorDia)) {
+              horasPorDia = [0, 0, 0, 0, 0, 0, 0];
+            }
+            
+            const horasTotales = horasPorDia.reduce((sum, h) => sum + (Number(h) || 0), 0);
+            
             return (
               <tr key={e.id}>
                 <td style={{ textAlign: 'center' }}>{e.id}</td>

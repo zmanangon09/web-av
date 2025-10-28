@@ -12,22 +12,34 @@ const EmpleadoController = {
         });
       }
       
-      if (!Array.isArray(horasPorDia) || horasPorDia.length !== 7) {
+      // Validar que horasPorDia sea un array
+      let horasArray = horasPorDia;
+      if (typeof horasPorDia === 'string') {
+        try {
+          horasArray = JSON.parse(horasPorDia);
+        } catch {
+          return res.status(400).json({ 
+            error: 'horasPorDia debe ser un array válido' 
+          });
+        }
+      }
+      
+      if (!Array.isArray(horasArray) || horasArray.length !== 7) {
         return res.status(400).json({ 
           error: 'horasPorDia debe ser un array de 7 elementos' 
         });
       }
 
       const empleado = await Empleado.create({
-        nombre,
-        horasPorDia,
-        pagoPorHora
+        nombre: nombre.trim(),
+        horasPorDia: horasArray.map(h => Number(h) || 0),
+        pagoPorHora: Number(pagoPorHora)
       });
       
-      res.status(201).json(empleado);
+      res.status(201).json(empleado.toJSON());
     } catch (error) {
       console.error('Error al crear empleado:', error);
-      res.status(500).json({ error: 'Error al crear empleado' });
+      res.status(500).json({ error: error.message || 'Error al crear empleado' });
     }
   },
 
@@ -37,7 +49,11 @@ const EmpleadoController = {
       const empleados = await Empleado.findAll({
         order: [['id', 'ASC']]
       });
-      res.json(empleados);
+      
+      // Asegurar que los datos se serialicen correctamente
+      const empleadosJSON = empleados.map(emp => emp.toJSON());
+      
+      res.json(empleadosJSON);
     } catch (error) {
       console.error('Error al obtener empleados:', error);
       res.status(500).json({ error: 'Error al obtener empleados' });
@@ -54,7 +70,7 @@ const EmpleadoController = {
         return res.status(404).json({ error: 'Empleado no encontrado' });
       }
       
-      res.json(empleado);
+      res.json(empleado.toJSON());
     } catch (error) {
       console.error('Error al obtener empleado:', error);
       res.status(500).json({ error: 'Error al obtener empleado' });
@@ -99,22 +115,41 @@ const EmpleadoController = {
         return res.status(404).json({ error: 'Empleado no encontrado' });
       }
 
-      if (horasPorDia && (!Array.isArray(horasPorDia) || horasPorDia.length !== 7)) {
-        return res.status(400).json({ 
-          error: 'horasPorDia debe ser un array de 7 elementos' 
-        });
+      // Validar horasPorDia si se proporciona
+      if (horasPorDia !== undefined) {
+        let horasArray = horasPorDia;
+        if (typeof horasPorDia === 'string') {
+          try {
+            horasArray = JSON.parse(horasPorDia);
+          } catch {
+            return res.status(400).json({ 
+              error: 'horasPorDia debe ser un array válido' 
+            });
+          }
+        }
+        
+        if (!Array.isArray(horasArray) || horasArray.length !== 7) {
+          return res.status(400).json({ 
+            error: 'horasPorDia debe ser un array de 7 elementos' 
+          });
+        }
       }
 
-      await empleado.update({
-        ...(nombre && { nombre }),
-        ...(horasPorDia && { horasPorDia }),
-        ...(pagoPorHora && { pagoPorHora })
-      });
+      // Preparar datos de actualización
+      const datosActualizacion = {};
+      if (nombre !== undefined) datosActualizacion.nombre = nombre.trim();
+      if (horasPorDia !== undefined) {
+        const horasArray = typeof horasPorDia === 'string' ? JSON.parse(horasPorDia) : horasPorDia;
+        datosActualizacion.horasPorDia = horasArray.map(h => Number(h) || 0);
+      }
+      if (pagoPorHora !== undefined) datosActualizacion.pagoPorHora = Number(pagoPorHora);
+
+      await empleado.update(datosActualizacion);
       
-      res.json(empleado);
+      res.json(empleado.toJSON());
     } catch (error) {
       console.error('Error al actualizar empleado:', error);
-      res.status(500).json({ error: 'Error al actualizar empleado' });
+      res.status(500).json({ error: error.message || 'Error al actualizar empleado' });
     }
   },
 
