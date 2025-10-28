@@ -1,4 +1,4 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { obtenerEmpleados, eliminarEmpleado } from '../services/empleadoService.js';
 import EmpleadoDetalle from './EmpleadoDetalle.js';
 import EmpleadoForm from './EmpleadoForm.js';
@@ -76,28 +76,37 @@ function EmpleadoLista() {
 
   // Calcular sueldo usando el método del modelo (simulado en frontend)
   const calcularSueldoLocal = (empleado) => {
-    const horasTotales = empleado.horasPorDia.reduce((sum, h) => sum + h, 0);
-    return horasTotales * empleado.pagoPorHora;
+    let horas = empleado.horasPorDia;
+    if (typeof horas === 'string') {
+      try {
+        horas = JSON.parse(horas);
+      } catch {
+        horas = [0,0,0,0,0,0,0];
+      }
+    }
+    if (!Array.isArray(horas)) horas = [0,0,0,0,0,0,0];
+    const horasTotales = horas.reduce((sum, h) => sum + (Number(h) || 0), 0);
+    return horasTotales * (empleado.pagoPorHora || 0);
   };
 
   return (
-    <div className="empleado-lista-container">
-      <h2>📋 Sistema de Gestión de Sueldos Semanales</h2>
+    <div>
+      <h2>Sistema de Gestión de Sueldos Semanales</h2>
       
-      <div className="acciones-principales">
-        <button onClick={handleNuevo} className="btn btn-primary">
-          ➕ Nuevo Empleado
+      <div>
+        <button onClick={handleNuevo}>
+          Nuevo Empleado
         </button>
       </div>
 
-      <div className="tabla-container">
+      <div>
         <h3>Lista de Empleados</h3>
         {empleados.length === 0 ? (
-          <p className="mensaje-vacio">
+          <p>
             No hay empleados registrados. Haz clic en "Nuevo Empleado" para agregar uno.
           </p>
         ) : (
-          <table className="tabla-empleados">
+          <table>
             <thead>
               <tr>
                 <th>ID</th>
@@ -109,8 +118,17 @@ function EmpleadoLista() {
             </thead>
             <tbody>
               {empleados.map((empleado) => {
+                let horas = empleado.horasPorDia;
+                if (typeof horas === 'string') {
+                  try {
+                    horas = JSON.parse(horas);
+                  } catch {
+                    horas = [0,0,0,0,0,0,0];
+                  }
+                }
+                if (!Array.isArray(horas)) horas = [0,0,0,0,0,0,0];
+                const horasTotales = horas.reduce((sum, h) => sum + (Number(h) || 0), 0);
                 const sueldo = calcularSueldoLocal(empleado);
-                const horasTotales = empleado.horasPorDia.reduce((sum, h) => sum + h, 0);
                 
                 return (
                   <tr key={empleado.id}>
@@ -118,24 +136,15 @@ function EmpleadoLista() {
                     <td>{empleado.nombre}</td>
                     <td>{horasTotales} hrs</td>
                     <td>${sueldo.toFixed(2)}</td>
-                    <td className="acciones">
-                      <button 
-                        onClick={() => handleVer(empleado.id)}
-                        className="btn btn-info"
-                      >
-                        👁️ Ver
+                    <td>
+                      <button onClick={() => handleVer(empleado.id)}>
+                        Ver
                       </button>
-                      <button 
-                        onClick={() => handleEditar(empleado.id)}
-                        className="btn btn-warning"
-                      >
-                        ✏️ Editar
+                      <button onClick={() => handleEditar(empleado.id)}>
+                        Editar
                       </button>
-                      <button 
-                        onClick={() => handleEliminar(empleado.id)}
-                        className="btn btn-danger"
-                      >
-                        🗑️ Eliminar
+                      <button onClick={() => handleEliminar(empleado.id)}>
+                        Eliminar
                       </button>
                     </td>
                   </tr>
